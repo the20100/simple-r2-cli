@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
@@ -43,23 +42,13 @@ type ObjectDetail struct {
 func NewClient(accountID, accessKeyID, secretAccessKey string) (*Client, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 
-	cfg, err := config.LoadDefaultConfig(ctx,
-		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(
-			accessKeyID,
-			secretAccessKey,
-			"",
-		)),
-		config.WithRegion("auto"),
-	)
-	if err != nil {
-		cancel()
-		return nil, fmt.Errorf("loading AWS config: %w", err)
-	}
+	endpoint := fmt.Sprintf("https://%s.r2.cloudflarestorage.com", accountID)
 
-	s3Client := s3.NewFromConfig(cfg, func(o *s3.Options) {
-		o.BaseEndpoint = aws.String(
-			fmt.Sprintf("https://%s.r2.cloudflarestorage.com", accountID),
-		)
+	s3Client := s3.New(s3.Options{
+		Region:       "auto",
+		BaseEndpoint: aws.String(endpoint),
+		Credentials:  credentials.NewStaticCredentialsProvider(accessKeyID, secretAccessKey, ""),
+		UsePathStyle: true,
 	})
 
 	return &Client{s3: s3Client, ctx: ctx, cancel: cancel}, nil
